@@ -1,64 +1,138 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
+  <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Staff Dashboard - Daily Attendance</title>
   <script src="common.js"></script>
   <link rel="stylesheet" href="styles.css">
   <style>
+    /* ===== Animated Gradient Background ===== */
     body {
       font-family: 'Segoe UI', Arial, sans-serif;
       margin: 0;
       padding: 20px;
-      background: linear-gradient(135deg, #eef3ff, #ffffff);
+      min-height: 100vh;
+      background: linear-gradient(135deg, #dbeafe, #eff6ff, #ffffff);
+      background-size: 400% 400%;
+      animation: bgMove 12s ease infinite;
+      display: flex;
+      justify-content: center;
+      align-items: flex-start;
     }
 
+    @keyframes bgMove {
+      0% { background-position: 0% 50%; }
+      50% { background-position: 100% 50%; }
+      100% { background-position: 0% 50%; }
+    }
+
+    /* ===== Card Styling ===== */
     .card {
-      background: #fff;
-      border-radius: 16px;
-      padding: 20px;
-      box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+      background: rgba(255, 255, 255, 0.92);
+      border-radius: 18px;
+      padding: 25px;
+      box-shadow: 0 10px 25px rgba(0, 0, 0, 0.15);
       max-width: 1000px;
-      margin: auto;
+      width: 100%;
+      backdrop-filter: blur(10px);
+      animation: fadeIn 1s ease;
     }
 
-    h1 { color: #1e3a8a; font-size: 22px; margin-bottom: 8px; }
-    hr { border: 0; border-top: 1px solid #ddd; margin: 15px 0; }
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(30px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
 
+    /* ===== Heading ===== */
+    h1 {
+      color: #1e3a8a;
+      font-size: 22px;
+      margin: 0 0 8px;
+      letter-spacing: 0.3px;
+    }
+
+    hr {
+      border: 0;
+      border-top: 1px solid #d1d5db;
+      margin: 15px 0;
+    }
+
+    #welcome {
+      font-size: 13px;
+      color: #555;
+    }
+
+    /* ===== Top Bar ===== */
+    .topbar {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 10px;
+    }
+
+    /* ===== Controls ===== */
     .u-row {
       display: flex;
       flex-wrap: wrap;
-      gap: 10px;
+      gap: 12px;
       align-items: center;
-      justify-content: flex-start;
       margin-bottom: 12px;
     }
 
-    label { font-weight: 600; color: #333; }
-    select, input[type="date"] {
-      padding: 6px;
-      border-radius: 6px;
-      border: 1px solid #ccc;
-      font-size: 14px;
+    label {
+      font-weight: 600;
+      color: #374151;
+      margin-right: 4px;
     }
 
+    select, input[type="date"] {
+      padding: 8px 10px;
+      border-radius: 8px;
+      border: 1px solid #cbd5e1;
+      font-size: 14px;
+      background: #f9fafb;
+      transition: all 0.2s ease;
+    }
+
+    select:focus, input:focus {
+      outline: none;
+      border-color: #2563eb;
+      box-shadow: 0 0 6px rgba(37, 99, 235, 0.3);
+      background: #fff;
+    }
+
+    /* ===== Buttons ===== */
     .btn {
       background: linear-gradient(135deg, #2563eb, #1e40af);
       color: white;
-      padding: 8px 14px;
+      padding: 8px 16px;
       border: none;
       border-radius: 8px;
       cursor: pointer;
       font-weight: 600;
-      transition: 0.2s;
+      font-size: 14px;
+      transition: transform 0.2s ease, box-shadow 0.2s ease;
     }
-    .btn:hover { transform: scale(1.05); }
 
+    .btn:hover {
+      transform: scale(1.05);
+      box-shadow: 0 4px 10px rgba(37, 99, 235, 0.3);
+    }
+
+    .btn:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+
+    /* ===== Grid ===== */
     .grid {
       display: flex;
       flex-wrap: wrap;
       gap: 12px;
       margin-top: 20px;
+      justify-content: flex-start;
     }
 
     .student {
@@ -67,52 +141,76 @@
       text-align: center;
       border-radius: 10px;
       cursor: pointer;
-      transition: 0.3s;
       font-size: 13px;
+      font-weight: 500;
       border: 1px solid #ccc;
-      background: #d4f7d4; /* Present by default */
+      background: #d9f9d9; /* Present default */
+      transition: all 0.25s ease;
+      user-select: none;
     }
 
-    .student.absent { background: #f9d0d0; border-color: #d9534f; }
-    .student.od { background: #e6d6f7; border-color: #8a2be2; color: #3b0764; }
+    .student:hover {
+      transform: scale(1.05);
+    }
 
+    .student.absent {
+      background: #ffe1e1;
+      border-color: #e11d48;
+      color: #991b1b;
+    }
+
+    .student.od {
+      background: #e9d5ff;
+      border-color: #8b5cf6;
+      color: #4c1d95;
+    }
+
+    /* ===== Toast ===== */
     #toast {
       visibility: hidden;
       min-width: 250px;
-      background-color: #333;
+      background-color: #111827;
       color: #fff;
       text-align: center;
       border-radius: 8px;
       padding: 12px;
       position: fixed;
-      z-index: 1;
+      z-index: 50;
       left: 50%;
       bottom: 30px;
-      transform: translateX(-50%);
+      transform: translateX(-50%) scale(0.9);
       opacity: 0;
-      transition: opacity 0.5s, bottom 0.5s;
+      transition: opacity 0.5s, bottom 0.5s, transform 0.4s ease;
     }
 
     #toast.show {
       visibility: visible;
       opacity: 1;
       bottom: 50px;
+      transform: translateX(-50%) scale(1);
     }
 
+    /* ===== Mobile Responsive ===== */
     @media (max-width: 768px) {
-      .student { width: 100px; font-size: 11px; }
-      .u-row { flex-direction: column; align-items: flex-start; }
+      body { padding: 10px; }
+      .card { padding: 20px 16px; }
+      .u-row { flex-direction: column; align-items: flex-start; gap: 8px; }
       select, input, .btn { width: 100%; }
+      .student { width: calc(50% - 10px); font-size: 12px; }
+    }
+
+    @media (max-width: 480px) {
+      .student { width: 100%; }
     }
   </style>
 </head>
-<body onload="initStaff()">
 
+<body onload="initStaff()">
   <div class="card">
-    <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;">
+    <div class="topbar">
       <div>
         <h1>Staff Dashboard</h1>
-        <div id="welcome" style="font-size:13px;color:#555;"></div>
+        <div id="welcome"></div>
       </div>
       <button class="btn" onclick="logout()">Logout</button>
     </div>
@@ -155,174 +253,164 @@
 
   <div id="toast"></div>
 
-<script>
-let user = null;
-let studentList = [];
+  <script>
+    let user = null;
+    let studentList = [];
 
-/* === INIT === */
-function initStaff() {
-  user = requireRole("Staff");
-  if (!user) return;
-  document.getElementById("welcome").innerText = 
-    `Signed in as: ${user.name} — Department: ${user.department}`;
-}
+    /* === INIT === */
+    function initStaff() {
+      user = requireRole("Staff");
+      if (!user) return;
+      document.getElementById("welcome").innerText =
+        `Signed in as: ${user.name} — Department: ${user.department}`;
+    }
 
-/* === Load Students === */
-async function loadStudents() {
-  const date = document.getElementById("dateFilter").value;
-  const batch = document.getElementById("batchSelect").value;
-  const year = document.getElementById("yearSelect").value;
-  const section = document.getElementById("sectionSelect").value;
+    /* === Load Students === */
+    async function loadStudents() {
+      const date = document.getElementById("dateFilter").value;
+      const batch = document.getElementById("batchSelect").value;
+      const year = document.getElementById("yearSelect").value;
+      const section = document.getElementById("sectionSelect").value;
 
-  if (!date || !year || !section) return alert("Please select Date, Year, and Section");
+      if (!date || !year || !section)
+        return alert("Please select Date, Year, and Section");
 
-  document.getElementById("grid").innerHTML = "<div>Loading students...</div>";
+      document.getElementById("grid").innerHTML = "<div>Loading students...</div>";
 
-  const res = await apiFetch({
-    action: "getStudents",
-    department: user.department,
-    year,
-    section,
-    date,
-    batch
-  });
+      const res = await apiFetch({
+        action: "getStudents",
+        department: user.department,
+        year,
+        section,
+        date,
+        batch
+      });
 
-  if (!res.success) {
-    document.getElementById("grid").innerHTML = "Error loading students.";
-    return;
-  }
+      if (!res.success) {
+        document.getElementById("grid").innerHTML = "Error loading students.";
+        return;
+      }
 
-  studentList = res.students || [];
-  renderGrid();
-}
+      studentList = res.students || [];
+      renderGrid();
+    }
 
-/* === Render Grid === */
-/* === Render Grid (Fixed to reflect saved status) === */
-function renderGrid() {
-  const grid = document.getElementById("grid");
-  grid.innerHTML = "";
+    /* === Render Grid === */
+    function renderGrid() {
+      const grid = document.getElementById("grid");
+      grid.innerHTML = "";
 
-  if (!studentList.length) {
-    grid.innerHTML = "<div>No students found.</div>";
-    document.getElementById("saveBtn").disabled = true;
-    return;
-  }
+      if (!studentList.length) {
+        grid.innerHTML = "<div>No students found.</div>";
+        document.getElementById("saveBtn").disabled = true;
+        return;
+      }
 
-  studentList.forEach((stu, i) => {
-    const div = document.createElement("div");
-    
-    // Decide color based on saved Status
-    let cls = "student present";
-    if (stu.Status === "Absent") cls = "student absent";
-    else if (stu.Status === "OD") cls = "student od";
-    div.className = cls;
+      studentList.forEach((stu, i) => {
+        const div = document.createElement("div");
 
-    div.innerHTML = `<strong>${stu.RollNo}</strong><br>${stu.Name}`;
-    div.dataset.index = i;
+        let cls = "student present";
+        if (stu.Status === "Absent") cls = "student absent";
+        else if (stu.Status === "OD") cls = "student od";
+        div.className = cls;
 
-    // Single click = Absent, Double click = OD
-    div.addEventListener("click", e => singleClick(e, () => markAbsent(i, div)));
-    div.addEventListener("dblclick", e => { e.preventDefault(); markOD(i, div); });
+        div.innerHTML = `<strong>${stu.RollNo}</strong><br>${stu.Name}`;
+        div.dataset.index = i;
 
-    grid.appendChild(div);
-  });
+        div.addEventListener("click", e => singleClick(e, () => markAbsent(i, div)));
+        div.addEventListener("dblclick", e => { e.preventDefault(); markOD(i, div); });
 
-  document.getElementById("saveBtn").disabled = false;
-}
+        grid.appendChild(div);
+      });
 
-/* === Attendance Marking === */
-let clickTimer = null;
-function singleClick(e, singleFn) {
-  if (clickTimer !== null) {
-    clearTimeout(clickTimer);
-    clickTimer = null;
-    return;
-  }
-  clickTimer = setTimeout(() => { singleFn(); clickTimer = null; }, 250);
-}
+      document.getElementById("saveBtn").disabled = false;
+    }
 
-function markAbsent(i, div) {
-  if (studentList[i].Status === "Absent") {
-    studentList[i].Status = "Present";
-    div.className = "student present";
-  } else {
-    studentList[i].Status = "Absent";
-    div.className = "student absent";
-  }
-}
+    /* === Attendance Marking === */
+    let clickTimer = null;
+    function singleClick(e, singleFn) {
+      if (clickTimer !== null) {
+        clearTimeout(clickTimer);
+        clickTimer = null;
+        return;
+      }
+      clickTimer = setTimeout(() => { singleFn(); clickTimer = null; }, 250);
+    }
 
-function markOD(i, div) {
-  if (studentList[i].Status === "OD") {
-    studentList[i].Status = "Present";
-    div.className = "student present";
-  } else {
-    studentList[i].Status = "OD";
-    div.className = "student od";
-  }
-}
+    function markAbsent(i, div) {
+      if (studentList[i].Status === "Absent") {
+        studentList[i].Status = "Present";
+        div.className = "student present";
+      } else {
+        studentList[i].Status = "Absent";
+        div.className = "student absent";
+      }
+    }
 
-/* === Save Attendance === */
-async function saveAttendance() {
-  const date = document.getElementById("dateFilter").value;
-  const batch = document.getElementById("batchSelect").value;
+    function markOD(i, div) {
+      if (studentList[i].Status === "OD") {
+        studentList[i].Status = "Present";
+        div.className = "student present";
+      } else {
+        studentList[i].Status = "OD";
+        div.className = "student od";
+      }
+    }
 
-  if (!date) return alert("Select date");
+    /* === Save Attendance === */
+    async function saveAttendance() {
+      const date = document.getElementById("dateFilter").value;
+      const batch = document.getElementById("batchSelect").value;
 
-  // Only save Absent / OD students
-  // Send all students (including Present) to ensure delete logic works
-const updates = studentList.map(s => ({
-  RollNo: s.RollNo,
-  Name: s.Name,
-  ParentName: s.ParentName,
-  ParentPhone: s.ParentPhone,
-  Department: s.Department,
-  Year: s.Year,
-  Section: s.Section,
-  Status: s.Status,
-  Reason: s.Reason || ""
-}));
+      if (!date) return alert("Select date");
 
+      const updates = studentList.map(s => ({
+        RollNo: s.RollNo,
+        Name: s.Name,
+        ParentName: s.ParentName,
+        ParentPhone: s.ParentPhone,
+        Department: s.Department,
+        Year: s.Year,
+        Section: s.Section,
+        Status: s.Status,
+        Reason: s.Reason || ""
+      }));
 
-  if (!updates.length) {
-    showToast("⚠️ No Absent/OD students to save.");
-    return;
-  }
+      if (!updates.length) {
+        showToast("⚠️ No Absent/OD students to save.");
+        return;
+      }
 
-  const res = await apiFetch({
-    action: "saveAttendance",
-    date,
-    batch,
-    updates
-  });
+      const res = await apiFetch({
+        action: "saveAttendance",
+        date,
+        batch,
+        updates
+      });
 
-  if (res.success) {
-  showToast(`Attendance saved successfully!`);
+      if (res.success) {
+        showToast(`✅ Attendance saved successfully!`);
+        await apiFetch({
+          action: "saveAttendanceStatus",
+          date,
+          batch,
+          year: document.getElementById("yearSelect").value,
+          section: document.getElementById("sectionSelect").value,
+          department: user.department,
+          status: "Taken"
+        });
+      } else {
+        showToast("❌ Save failed: " + (res.message || ""));
+      }
+    }
 
-  // ✅ Record attendance status
-  await apiFetch({
-    action: "saveAttendanceStatus",
-    date,
-    batch,
-    year: document.getElementById("yearSelect").value,
-    section: document.getElementById("sectionSelect").value,
-    department: user.department,
-    status: "Taken"
-  });
-
-} else {
-  showToast("❌ Save failed: " + (res.message || ""));
-}
-}
-
-/* === Toast === */
-function showToast(msg) {
-  const toast = document.getElementById("toast");
-  toast.innerHTML = msg;
-  toast.className = "show";
-  setTimeout(() => { toast.className = toast.className.replace("show", ""); }, 3000);
-}
-</script>
+    /* === Toast === */
+    function showToast(msg) {
+      const toast = document.getElementById("toast");
+      toast.innerHTML = msg;
+      toast.className = "show";
+      setTimeout(() => { toast.className = toast.className.replace("show", ""); }, 3000);
+    }
+  </script>
 </body>
 </html>
-
-
