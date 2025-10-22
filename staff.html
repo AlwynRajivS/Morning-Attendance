@@ -37,6 +37,7 @@
       width: 100%;
       backdrop-filter: blur(10px);
       animation: fadeIn 1s ease;
+      box-sizing: border-box;
     }
 
     @keyframes fadeIn {
@@ -44,7 +45,6 @@
       to { opacity: 1; transform: translateY(0); }
     }
 
-    /* ===== Heading ===== */
     h1 {
       color: #1e3a8a;
       font-size: 22px;
@@ -128,15 +128,14 @@
 
     /* ===== Grid ===== */
     .grid {
-      display: flex;
-      flex-wrap: wrap;
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
       gap: 12px;
       margin-top: 20px;
-      justify-content: flex-start;
+      width: 100%;
     }
 
     .student {
-      width: 120px;
       padding: 10px;
       text-align: center;
       border-radius: 10px;
@@ -144,14 +143,12 @@
       font-size: 13px;
       font-weight: 500;
       border: 1px solid #ccc;
-      background: #d9f9d9; /* Present default */
+      background: #d9f9d9;
       transition: all 0.25s ease;
       user-select: none;
     }
 
-    .student:hover {
-      transform: scale(1.05);
-    }
+    .student:hover { transform: scale(1.05); }
 
     .student.absent {
       background: #ffe1e1;
@@ -193,14 +190,35 @@
     /* ===== Mobile Responsive ===== */
     @media (max-width: 768px) {
       body { padding: 10px; }
-      .card { padding: 20px 16px; }
-      .u-row { flex-direction: column; align-items: flex-start; gap: 8px; }
-      select, input, .btn { width: 100%; }
-      .student { width: calc(50% - 10px); font-size: 12px; }
+      .card { padding: 18px; }
+      .u-row {
+        flex-direction: column;
+        align-items: stretch;
+        gap: 10px;
+      }
+      label {
+        margin-bottom: 3px;
+        display: block;
+      }
+      select, input, .btn {
+        width: 100%;
+      }
+      .grid {
+        grid-template-columns: repeat(2, 1fr);
+      }
+      .student {
+        font-size: 12px;
+        padding: 8px;
+      }
     }
 
     @media (max-width: 480px) {
-      .student { width: 100%; }
+      .grid {
+        grid-template-columns: 1fr;
+      }
+      .student {
+        width: 100%;
+      }
     }
   </style>
 </head>
@@ -257,7 +275,6 @@
     let user = null;
     let studentList = [];
 
-    /* === INIT === */
     function initStaff() {
       user = requireRole("Staff");
       if (!user) return;
@@ -265,7 +282,6 @@
         `Signed in as: ${user.name} — Department: ${user.department}`;
     }
 
-    /* === Load Students === */
     async function loadStudents() {
       const date = document.getElementById("dateFilter").value;
       const batch = document.getElementById("batchSelect").value;
@@ -295,7 +311,6 @@
       renderGrid();
     }
 
-    /* === Render Grid === */
     function renderGrid() {
       const grid = document.getElementById("grid");
       grid.innerHTML = "";
@@ -308,25 +323,20 @@
 
       studentList.forEach((stu, i) => {
         const div = document.createElement("div");
-
         let cls = "student present";
         if (stu.Status === "Absent") cls = "student absent";
         else if (stu.Status === "OD") cls = "student od";
         div.className = cls;
-
         div.innerHTML = `<strong>${stu.RollNo}</strong><br>${stu.Name}`;
         div.dataset.index = i;
-
         div.addEventListener("click", e => singleClick(e, () => markAbsent(i, div)));
         div.addEventListener("dblclick", e => { e.preventDefault(); markOD(i, div); });
-
         grid.appendChild(div);
       });
 
       document.getElementById("saveBtn").disabled = false;
     }
 
-    /* === Attendance Marking === */
     let clickTimer = null;
     function singleClick(e, singleFn) {
       if (clickTimer !== null) {
@@ -357,7 +367,6 @@
       }
     }
 
-    /* === Save Attendance === */
     async function saveAttendance() {
       const date = document.getElementById("dateFilter").value;
       const batch = document.getElementById("batchSelect").value;
@@ -404,7 +413,6 @@
       }
     }
 
-    /* === Toast === */
     function showToast(msg) {
       const toast = document.getElementById("toast");
       toast.innerHTML = msg;
