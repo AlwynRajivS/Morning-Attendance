@@ -46,6 +46,64 @@
       margin-top: 40px;
       font-size: 14px;
     }
+    /* === Lock / Unlock Slider Switch === */
+.switch {
+  position: relative;
+  display: inline-block;
+  width: 70px;
+  height: 30px;
+  vertical-align: middle;
+}
+
+.switch input {
+  opacity: 0;
+  width: 0;
+  height: 0;
+}
+
+.slider {
+  position: absolute;
+  cursor: pointer;
+  top: 0; left: 0; right: 0; bottom: 0;
+  background-color: #ccc;
+  transition: 0.4s;
+  border-radius: 30px;
+}
+
+.slider:before {
+  position: absolute;
+  content: "";
+  height: 24px;
+  width: 24px;
+  left: 3px;
+  bottom: 3px;
+  background-color: white;
+  transition: transform 0.4s ease;
+  border-radius: 50%;
+}
+
+/* Move handle to right when checked */
+input:checked + .slider:before {
+  transform: translateX(40px);
+}
+
+/* Gradient background when locked */
+input:checked + .slider {
+  background: linear-gradient(135deg,#2563eb,#1e40af);
+}
+
+/* Text label overlay */
+.slider::after {
+  content: attr(data-label);
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  font-size: 12px;
+  font-weight: 600;
+  color: white;
+  pointer-events: none;
+}
   </style>
 </head>
 
@@ -68,18 +126,33 @@
     <button class="btn" onclick="downloadAbsentees()">Download Absentees CSV</button>
     <button class="btn" onclick="downloadOD()">Download OD CSV</button>
     <button class="btn" onclick="loadAttendanceStatus()">View Status</button>
-  </div>
+    <div class="lock-toggle">
+  <label class="switch">
+    <input type="checkbox" id="lockToggleBtn" onchange="updateSliderLabel(this)">
+    <span class="slider" data-label="Unlock"></span>
+  </label>
+  <span id="lockMessage" style="color:red; font-weight:600; margin-left:10px;"></span>
+</div>
 
   <footer>College Attendance System</footer>
 
   <script>
+    function updateSliderLabel(input) {
+  const slider = input.nextElementSibling;
+  slider.setAttribute("data-label", input.checked ? "Lock" : "Unlock");
+}
     let absenteesData = [];
     let odData = [];
+    let currentUser = { email: "", role: "" };
 
     function initOffice() {
       const user = requireRole("Office");
       if (!user) return;
+  currentUser = user;
+  updateLockToggleButton();
     }
+  
+
 
     /* === Fetch Data === */
     async function fetchAttendanceData() {
@@ -218,8 +291,93 @@ async function loadAttendanceStatus() {
   html += `</div></div></div>`;
   document.body.insertAdjacentHTML("beforeend", html);
 }
-  </script>
+
+// === Lock / Unlock Attendance (Improved version) ===
+async function updateLockToggleButton() {
+  const date = document.getElementById("date").value;
+  const batch = document.getElementById("batch").value;
+  const checkbox = document.getElementById("lockToggleBtn");
+  const msg = document.getElementById("lockMessage");
+
+  if (!date || !batch) {
+    checkbox.checked = false;
+    checkbox.disabled = true;
+    msg.innerText = "";
+    return;
+  }
+
+  checkbox.disabled = false;
+
+  try {
+    const res = await fetch(SCRIPT_URL, {
+      method: "POST",
+      body: JSON.stringify({ action: "checkLockStatus", date, batch })
+    });
+    const data = await res.json();
+
+    if (data.locked) {
+      checkbox.checked = true;
+      msg.innerText = `Locked by ${data.role} (${data.lockedBy})`;
+      msg.style.color = "green";
+    } else {
+      checkbox.checked = false;
+      msg.innerText = "Unlocked";
+      msg.style.color = "red";
+    }
+  } catch (err) {
+    console.error(err);
+    msg.innerText = "Error checking lock status";
+    msg.style.color = "red";
+  }
+}
+
+// === Handle Toggle ===
+document.getElementById("lockToggleBtn").addEventListener("change", toggleLock);
+document.getElementById("date").addEventListener("change", updateLockToggleButton);
+document.getElementById("batch").addEventListener("change", updateLockToggleButton);
+
+async function toggleLock() {
+  const checkbox = document.getElementById("lockToggleBtn");
+  checkbox.disabled = true;
+
+  const date = document.getElementById("date").value;
+  const batch = document.getElementById("batch").value;
+
+  if (!date || !batch) {
+    alert("Select date & batch first");
+    checkbox.disabled = false;
+    return;
+  }
+
+  const action = checkbox.checked ? "lockAttendance" : "unlockAttendance";
+  const payload = {
+    action,
+    date,
+    batch,
+    email: currentUser.email,
+    role: currentUser.role
+  };
+
+  try {
+    const res = await fetch(SCRIPT_URL, {
+      method: "POST",
+      body: JSON.stringify(payload)
+    });
+    const data = await res.json();
+    alert(data.message);
+  } catch (err) {
+    console.error(err);
+    alert("Error connecting to server");
+  } finally {
+    await updateLockToggleButton(); 
+    checkbox.disabled = false;
+    updateSliderLabel(checkbox);
+
+  }
+}
+
+
+</script>
 
 </body>
 </html>
-
