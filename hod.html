@@ -158,20 +158,42 @@
       }
     }
 
-    /* === Download Class Summary CSV === */
-    function downloadSummaryCSV() {
-      if(!absentees.length) return alert("No records to download");
-      const header=["RollNo","Name","ParentName","ParentPhone","Status","Reason","Year","Section"];
-      let csv = header.join(",") + "\n";
-      absentees.forEach(r=>{
-        csv += [r.RollNo,r.Name,r.ParentName,r.ParentPhone,r.Status,r.Reason,r.Year,r.Section].join(",")+"\n";
-      });
-      const blob = new Blob([csv],{type:"text/csv"});
-      const a = document.createElement("a");
-      a.href=URL.createObjectURL(blob);
-      a.download=`AttendanceSummary_${hodDept}.csv`;
-      a.click();
-    }
+    /* === Download Class Summary CSV (Updated) === */
+function downloadSummaryCSV() {
+  if (!absentees.length) return alert("No records to download");
+
+  // Step 1: Build class-wise summary same as renderSummaryGrid()
+  const classMap = {};
+  absentees.forEach(s => {
+    const key = `${s.Year} ${s.Section}`;
+    if (!classMap[key]) classMap[key] = { total: 0, present: 0, absent: 0 };
+    classMap[key].total += 1;
+    if (s.Status === "Absent" || s.Status === "OD") classMap[key].absent += 1;
+    else classMap[key].present += 1;
+  });
+
+  // Step 2: Create CSV header
+  const header = ["Year", "Section", "Total Students", "Present", "Absent/OD", "Attendance %"];
+  let csv = header.join(",") + "\n";
+
+  // Step 3: Add each class summary as a row
+  for (const key in classMap) {
+    const [year, section] = key.split(" ");
+    const c = classMap[key];
+    const percent = ((c.present / c.total) * 100).toFixed(2);
+    csv += [year, section, c.total, c.present, c.absent, `${percent}%`].join(",") + "\n";
+  }
+
+  // Step 4: Trigger file download
+  const date = document.getElementById("date").value || "UnknownDate";
+  const batch = document.getElementById("batch").value || "FN";
+  const blob = new Blob([csv], { type: "text/csv" });
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(blob);
+  a.download = `ClassSummary_${hodDept}_${date}_${batch}.csv`;
+  a.click();
+}
+
 
     /* === Download Studentwise Absent/OD CSV === */
     function downloadStudentwiseCSV() {
@@ -249,7 +271,7 @@
     }
 
     function downloadUsersTemplate(){
-      const csv="Email,Password,Name,Role,Department\nexample@domain.com,123456,John Doe,Faculty,"+hodDept;
+      const csv="Email,Password,Name,Role,Department,Year,Section\nexample@domain.com,123456,John Doe,Faculty,"+hodDept+",IV,C";
       const blob=new Blob([csv],{type:"text/csv"});
       const a=document.createElement("a");
       a.href=URL.createObjectURL(blob);
@@ -263,8 +285,8 @@
       const text=await file.text();
       const lines=text.split("\n").filter(l=>l.trim());
       const users=lines.slice(1).map(l=>{
-        const [Email,Password,Name,Role,Department]=l.split(",");
-        return {Email,Password,Name,Role,Department};
+        const [Email,Password,Name,Role,Department,Year,Section]=l.split(",");
+        return {Email,Password,Name,Role,Department,Year,Section};
       });
       const res=await fetch(SCRIPT_URL,{
         method:"POST",
@@ -316,7 +338,6 @@
   </script>
 </body>
 </html>
-
 
 
 
