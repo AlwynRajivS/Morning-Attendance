@@ -73,6 +73,10 @@
     <button class="btn" onclick="logout()">Logout</button>
   </div>
 
+  <div id="facultySectionInfo" 
+     style="text-align:center; font-weight:600; color:#2563eb; margin-bottom:15px;">
+</div>
+
   <table id="dataTable">
     <thead>
       <tr>
@@ -115,38 +119,75 @@
 </div>
 
   <script>
-    let facultyDept = localStorage.getItem("department") || "";
     let absentees = [];
     let user;
 
     function initFaculty() {
-      user = requireRole("Faculty");
-      if (!user) return;
-      document.getElementById("welcome").innerText =
-        `Signed in as: ${user.name} — Department: ${user.department}`;
-    }
+  user = requireRole("faculty"); // lowercase
+  if (!user) return;
+
+  // Save email
+  localStorage.setItem("facultyEmail", user.email);
+
+  document.getElementById("welcome").innerText =
+    `Signed in as: ${user.name} (${user.email})`;
+}
 
     async function loadAbsentees() {
-      const date = document.getElementById("date").value;
-      const batch = document.getElementById("batch").value;
-      if (!date) return alert("Please select a date.");
+  const date = document.getElementById("date").value;
+  const batch = document.getElementById("batch").value;
+  const facultyEmail = localStorage.getItem("facultyEmail");
 
-      const res = await fetch(SCRIPT_URL, {
-        method: "POST",
-        body: JSON.stringify({
-          action: "getAbsenteesForFaculty",
-          department: user.department,
-          date,
-          batch
-        }),
-      });
-      const data = await res.json();
-      if (!data.success) return alert(data.message);
+  if (!date || !batch) return alert("Please select both date and batch.");
+  if (!facultyEmail) return alert("Faculty email not found. Please log in again.");
 
-      absentees = data.records;
-      renderSummary();
-      renderTable();
+  // --- Check lock status ---
+  let isLocked = false;
+  let lockedBy = "";
+  try {
+    const lockCheck = await fetch(SCRIPT_URL, {
+      method: "POST",
+      body: JSON.stringify({ action: "checkLockStatus", date, batch })
+    });
+    const lockData = await lockCheck.json();
+    if (lockData.locked) {
+      isLocked = true;
+      lockedBy = `${lockData.role || 'Unknown Role'} (${lockData.lockedBy || 'Unknown'})`;
+      alert(`Attendance is locked for this date & batch.\nLocked by admin.\nYou can only view data.`);
     }
+  } catch (err) {
+    console.error("Lock check failed:", err);
+  }
+
+  // --- Fetch data anyway (for view mode) ---
+  const res = await fetch(SCRIPT_URL, {
+    method: "POST",
+    body: JSON.stringify({
+      action: "getAbsenteesForFaculty",
+      email: facultyEmail,
+      date,
+      batch
+    })
+  });
+
+  const data = await res.json();
+  if (!data.success) return alert(data.message);
+
+  absentees = data.records || data.data || [];
+
+  renderTable(isLocked);
+  renderSummary();
+
+  // --- Display section info ---
+  document.getElementById("facultySectionInfo").innerText =
+    `Loaded: ${data.department || user.department} - ${data.year || user.year} ${data.section || user.section}`;
+
+  // --- Disable or enable save button based on lock ---
+  const saveBtn = document.querySelector(".save");
+  saveBtn.disabled = isLocked;
+  saveBtn.style.opacity = isLocked ? "0.6" : "1.0";
+}
+
 
     function renderSummary() {
   const summaryDiv = document.getElementById("summary");
@@ -189,34 +230,47 @@
 }
 
 
-    function renderTable() {
-      const tbody = document.querySelector("#dataTable tbody");
-      tbody.innerHTML = "";
+    function renderTable(isLocked = false) {
+  const tbody = document.querySelector("#dataTable tbody");
+  tbody.innerHTML = "";
 
-      absentees.forEach((s, i) => {
-        tbody.innerHTML += `
-          <tr>
-            <td>${s.RollNo}</td>
-            <td>${s.Name}</td>
-            <td>${s.Year}</td>
-            <td>${s.Section}</td>
-            <td>
-              <select onchange="absentees[${i}].Status=this.value">
-                <option ${s.Status==='Absent'?'selected':''}>Absent</option>
-                <option ${s.Status==='OD'?'selected':''}>OD</option>
-              </select>
-            </td>
-            <td><input type="text" value="${s.Reason||''}" 
-                 onchange="absentees[${i}].Reason=this.value" style="width:120px;"></td>
-            <td>
-              <button class="btn" onclick="editParent(${i})">Edit</button>
-              <button class="btn" onclick="viewHistory('${s.RollNo}','${s.Name}')">History</button>
-              <button class="btn" onclick="callParent('${s.ParentPhone||''}', ${i})">Call</button>
+  absentees.forEach((s, i) => {
+    tbody.innerHTML += `
+      <tr>
+        <td>${s.RollNo}</td>
+        <td>${s.Name}</td>
+        <td>${s.Year}</td>
+        <td>${s.Section}</td>
+        <td>
+          ${
+            isLocked
+              ? `<span>${s.Status}</span>`
+              : `<select onchange="absentees[${i}].Status=this.value">
+                   <option ${s.Status==='Absent'?'selected':''}>Absent</option>
+                   <option ${s.Status==='OD'?'selected':''}>OD</option>
+                 </select>`
+          }
+        </td>
+        <td>
+          ${
+            isLocked
+              ? `<span>${s.Reason || '-'}</span>`
+              : `<input type="text" value="${s.Reason||''}" onchange="absentees[${i}].Reason=this.value" style="width:120px;">`
+          }
+        </td>
+        <td>
+          <button class="btn" onclick="viewHistory('${s.RollNo}','${s.Name}')">History</button>
+          <button class="btn" onclick="callParent('${s.ParentPhone||''}', ${i})">Call</button>
+          ${
+            !isLocked
+              ? `<button class="btn" onclick="editParent(${i})">Edit</button>`
+              : ''
+          }
+        </td>
+      </tr>`;
+  });
+}
 
-            </td>
-          </tr>`;
-      });
-    }
 
     function editParent(index) {
       const s = absentees[index];
@@ -311,4 +365,3 @@ function closeCall() {
   </script>
 </body>
 </html>
-
