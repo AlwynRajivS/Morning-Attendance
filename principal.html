@@ -34,6 +34,68 @@
     .file-input { margin:10px 0; }
     .top-summary { display:flex; justify-content:center; gap:20px; margin-bottom:20px; }
     .top-box { background:white; border-radius:10px; box-shadow:0 2px 8px rgba(0,0,0,0.1); padding:15px 30px; text-align:center; font-size:18px; }
+    /* Slider switch */
+/* === Lock / Unlock Slider Switch === */
+.switch {
+  position: relative;
+  display: inline-block;
+  width: 70px;
+  height: 30px;
+  vertical-align: middle;
+}
+
+.switch input {
+  opacity: 0;
+  width: 0;
+  height: 0;
+}
+
+.slider {
+  position: absolute;
+  cursor: pointer;
+  top: 0; left: 0; right: 0; bottom: 0;
+  background-color: #ccc;
+  transition: 0.4s;
+  border-radius: 30px;
+}
+
+.slider:before {
+  position: absolute;
+  content: "";
+  height: 24px;
+  width: 24px;
+  left: 3px;
+  bottom: 3px;
+  background-color: white;
+  transition: transform 0.4s ease;
+  border-radius: 50%;
+}
+
+/* Move handle to right when checked */
+input:checked + .slider:before {
+  transform: translateX(40px);
+}
+
+/* Gradient background when locked */
+input:checked + .slider {
+  background: linear-gradient(135deg,#2563eb,#1e40af);
+}
+
+/* Text label overlay */
+.slider::after {
+  content: attr(data-label);
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  font-size: 12px;
+  font-weight: 600;
+  color: white;
+  pointer-events: none;
+}
+
+
+
   </style>
 </head>
 <body onload="initPrincipal()">
@@ -55,10 +117,23 @@
         </select>
       </label>
       <button class="btn" onclick="loadCollegeSummary()">Load Summary</button>
+      <button class="btn" onclick="downloadCollegeSummary()">Download Summary</button>
       <button class="btn" onclick="downloadAbsentReport()">Download Absent CSV</button>
       <button class="btn" onclick="downloadODReport()">Download OD CSV</button>
       <button class="btn" onclick="loadAttendanceStatus()">View Status</button>
+
     </div>
+
+    <div class="lock-toggle">
+  <label class="switch">
+    <input type="checkbox" id="lockToggleBtn" onchange="updateSliderLabel(this)">
+    <span class="slider" data-label="Unlock"></span>
+  </label>
+  <span id="lockMessage" style="color:red; font-weight:600; margin-left:10px;"></span>
+</div>
+
+
+
     <div id="summaryGrid"></div>
     <div id="classGrid"></div>
     <div id="statusTableArea"></div>
@@ -77,16 +152,27 @@
   </div>
 
   <script>
-    let collegeData = [];
-    let currentDept = "";
-    let allAbsentees = [];
-    let allOD = [];
 
-    function initPrincipal() {
-      const user = requireRole("Principal");
-      if(!user) return;
-      loadHoDUsers();
-    }
+    function updateSliderLabel(input) {
+  const slider = input.nextElementSibling;
+  slider.setAttribute("data-label", input.checked ? "Lock" : "Unlock");
+}
+
+    let collegeData = [];
+let collegeClassData = [];   // <-- new
+let currentDept = "";
+let allAbsentees = [];
+let allOD = [];
+let currentUser = { email: "", role: "" };
+
+function initPrincipal() {
+  const user = requireRole("Principal"); // or "Office" too
+  if (!user) return;
+  currentUser = user; // <-- initialize here
+  loadHoDUsers();
+  updateLockToggleButton();
+}
+
 
     /* === Load College Summary === */
     async function loadCollegeSummary() {
@@ -101,9 +187,12 @@
       const data = await res.json();
       if(!data.success) return alert(data.message);
 
-      collegeData = data.summary || [];
+      // inside loadCollegeSummary after receiving `data`:
+collegeData = data.summary || [];
+collegeClassData = data.classRecords || [];   // <--- new
 allAbsentees = data.absent || [];
 allOD = data.od || [];
+
 
 
 
@@ -328,9 +417,135 @@ async function loadAttendanceStatus() {
   document.body.insertAdjacentHTML("beforeend", html);
 }
 
+function downloadCollegeSummary() {
+  if (!collegeClassData || !collegeClassData.length)
+    return alert("No class-wise data available. Please load summary first.");
+
+  const header = [
+    "Department",
+    "Year",
+    "Section",
+    "Total Students",
+    "Present",
+    "Absent/OD",
+    "Attendance %"
+  ];
+  let csv = header.join(",") + "\n";
+
+  collegeClassData.forEach(c => {
+    const total = Number(c.total) || 0;
+    const present = Number(c.present) || 0;
+    const absent = Number(c.absent) || 0;
+    const od = Number(c.od) || 0;
+    const absentOrOd = absent + od;
+    const percent = total ? ((present / total) * 100).toFixed(2) : "0.00";
+
+    csv += [
+      c.Department || "",
+      c.Year || "",
+      c.Section || "",
+      total,
+      present,
+      absentOrOd,
+      `${percent}%`
+    ].join(",") + "\n";
+  });
+
+  const date = document.getElementById("date").value || "UnknownDate";
+  const batch = document.getElementById("batch").value || "FN";
+  const blob = new Blob([csv], { type: "text/csv" });
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(blob);
+  a.download = `College_Classwise_Summary_${date}_${batch}.csv`;
+  a.click();
+}
+
+// === Lock / Unlock Attendance (Improved version) ===
+async function updateLockToggleButton() {
+  const date = document.getElementById("date").value;
+  const batch = document.getElementById("batch").value;
+  const checkbox = document.getElementById("lockToggleBtn");
+  const msg = document.getElementById("lockMessage");
+
+  if (!date || !batch) {
+    checkbox.checked = false;
+    checkbox.disabled = true;
+    msg.innerText = "";
+    return;
+  }
+
+  checkbox.disabled = false;
+
+  try {
+    const res = await fetch(SCRIPT_URL, {
+      method: "POST",
+      body: JSON.stringify({ action: "checkLockStatus", date, batch })
+    });
+    const data = await res.json();
+
+    if (data.locked) {
+      checkbox.checked = true;
+      msg.innerText = `Locked by ${data.role} (${data.lockedBy})`;
+      msg.style.color = "green";
+    } else {
+      checkbox.checked = false;
+      msg.innerText = "Unlocked";
+      msg.style.color = "red";
+    }
+  } catch (err) {
+    console.error(err);
+    msg.innerText = "Error checking lock status";
+    msg.style.color = "red";
+  }
+}
+
+// === Handle Toggle ===
+document.getElementById("lockToggleBtn").addEventListener("change", toggleLock);
+document.getElementById("date").addEventListener("change", updateLockToggleButton);
+document.getElementById("batch").addEventListener("change", updateLockToggleButton);
+
+async function toggleLock() {
+  const checkbox = document.getElementById("lockToggleBtn");
+  checkbox.disabled = true;
+
+  const date = document.getElementById("date").value;
+  const batch = document.getElementById("batch").value;
+
+  if (!date || !batch) {
+    alert("Select date & batch first");
+    checkbox.disabled = false;
+    return;
+  }
+
+  const action = checkbox.checked ? "lockAttendance" : "unlockAttendance";
+  const payload = {
+    action,
+    date,
+    batch,
+    email: currentUser.email,
+    role: currentUser.role
+  };
+
+  try {
+    const res = await fetch(SCRIPT_URL, {
+      method: "POST",
+      body: JSON.stringify(payload)
+    });
+    const data = await res.json();
+    alert(data.message);
+  } catch (err) {
+    console.error(err);
+    alert("Error connecting to server");
+  } finally {
+    await updateLockToggleButton(); 
+    checkbox.disabled = false;
+    updateSliderLabel(checkbox);
+
+  }
+}
+
 
 
   </script>
 </body>
 </html>
-
