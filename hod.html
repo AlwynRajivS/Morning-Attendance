@@ -4,7 +4,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>HoD Dashboard – Attendance & Management</title>
   <script src="common.js"></script>
-  <link rel="stylesheet" href="styles.css">
+  
   <style>
     body { font-family: 'Segoe UI', sans-serif; background:#f5f8ff; margin:0; padding:20px; }
     h2 { text-align:center; color:#1e3a8a; }
@@ -37,7 +37,7 @@
 <body onload="initHOD()">
 
   <h2>HoD Dashboard – Department: <span id="hodDept"></span></h2>
-
+  <button class="btn" onclick="logout()">Logout</button>
   <!-- Attendance Summary -->
   <div class="section">
     <h3>Attendance Summary</h3>
@@ -52,7 +52,7 @@
       <button class="btn" onclick="loadSummary()">Load Summary</button>
       <button class="btn" onclick="downloadSummaryCSV()">Download Class Summary</button>
       <button class="btn" onclick="downloadStudentwiseCSV()">Download Studentwise Report</button>
-      <button class="btn" onclick="logout()">Logout</button>
+      
     </div>
     <div id="summaryGrid"></div>
   </div>
@@ -119,7 +119,7 @@
 
       const res = await fetch(SCRIPT_URL, {
         method:"POST",
-        body: JSON.stringify({action:"getAbsenteesForFaculty", department: hodDept, date, batch})
+        body: JSON.stringify({action:"getAbsenteesForHoD", department: hodDept, date, batch})
       });
       const data = await res.json();
       if(!data.success) return alert(data.message);
@@ -338,6 +338,9 @@ function downloadSummaryCSV() {
   </script>
 </body>
 </html>
+
+
+
 
 
 
